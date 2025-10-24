@@ -33,6 +33,20 @@ Observações: ${briefing.observacoes}.
     const texto = response.choices[0].message.content;
     const linkCanva = `https://www.canva.com/design/use?template=YOUR_TEMPLATE_ID&text=${encodeURIComponent(texto)}`;
 
+// 🔗 Envia o resultado para o Make (webhook)
+await fetch("https://hook.us2.make.com/b2xcvlja1m1oi16wnckuvz1xnsg89h45", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    curso: briefing.curso,
+    tipo_peca: briefing.tipo_peca,
+    nome_evento: briefing.nome_evento,
+    publico: briefing.publico,
+    texto_gerado: texto
+  })
+});
+
+    
     res.json({
       texto_gerado: texto,
       link_canva: linkCanva
