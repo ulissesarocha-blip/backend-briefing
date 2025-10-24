@@ -1,79 +1,63 @@
 import express from "express";
 import cors from "cors";
-import bodyParser from "body-parser";
-import dotenv from "dotenv";
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
-// carregar variáveis de ambiente
-dotenv.config();
-
-// inicializa app Express
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// inicializa cliente OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+app.get("/", (req, res) => {
+  res.send("Servidor de Briefing UniEduK ativo com Groq! 🚀");
 });
 
-// rota principal de geração de briefing
+// 🚀 Rota principal do formulário
 app.post("/briefing", async (req, res) => {
+  const { curso, tipo_peca, nome_evento, publico, tom_voz, data_evento, link_local, observacoes } =
+    req.body;
+
   try {
-    const briefing = req.body;
-
-    // prompt base
-    const prompt = `
-Você é um redator publicitário do Grupo UniEduK. 
-Crie uma legenda para ${briefing.tipo_peca} do curso ${briefing.curso}.
-Tema: ${briefing.nome_evento}.
-Público: ${briefing.publico}.
-Tom: ${briefing.tom_voz}.
-Observações: ${briefing.observacoes}.
-`;
-
-    // chamada à API da OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
-    });
-
-    const texto = response.choices[0].message.content;
-
-    // gera link base do Canva (ajuste seu template depois)
-    const linkCanva = `https://www.canva.com/design/use?template=YOUR_TEMPLATE_ID&text=${encodeURIComponent(texto)}`;
-
-    // ⚠️ Envia resultado para o Make (substitua o link abaixo pelo seu webhook real)
-    await fetch("https://hook.us2.make.com/b2xcvlja1m1oi16wnckuvz1xnsg89h45", {
+    // 🧠 Geração de texto via Groq
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        curso: briefing.curso,
-        tipo_peca: briefing.tipo_peca,
-        nome_evento: briefing.nome_evento,
-        publico: briefing.publico,
-        texto_gerado: texto,
-        link_canva: linkCanva
-      })
+        model: "llama3-8b-8192", // modelo rápido e gratuito
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um assistente de marketing da UniFAJ e UniMAX. Gere textos curtos e criativos para campanhas.",
+          },
+          {
+            role: "user",
+            content: `Crie um texto de ${tipo_peca} para o curso ${curso}, 
+              com o evento '${nome_evento}', voltado para ${publico}, 
+              com tom ${tom_voz}. Data: ${data_evento}. Local: ${link_local}. 
+              Observações: ${observacoes}.`,
+          },
+        ],
+        temperature: 0.8,
+      }),
     });
 
-    // resposta para o frontend
+    const data = await response.json();
+    const textoGerado = data?.choices?.[0]?.message?.content || "Não foi possível gerar o texto.";
+
+    // 🔗 simulação de integração futura com Canva
+    const linkCanva = "https://www.canva.com/";
+
     res.json({
-      texto_gerado: texto,
-      link_canva: linkCanva
+      texto_gerado: textoGerado,
+      link_canva: linkCanva,
     });
-
-  } catch (err) {
-    console.error("❌ Erro ao gerar briefing:", err);
-    res.status(500).json({ error: "Erro ao gerar peça" });
+  } catch (error) {
+    console.error("Erro ao gerar briefing:", error);
+    res.status(500).json({ error: "Erro interno ao gerar briefing" });
   }
 });
 
-// rota raiz (teste rápido)
-app.get("/", (req, res) => {
-  res.send("Servidor de Briefing UniEduK ativo!");
-});
-
-// iniciar servidor
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
