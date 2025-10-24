@@ -10,13 +10,11 @@ app.get("/", (req, res) => {
   res.send("Servidor de Briefing UniEduK ativo com Groq! 🚀");
 });
 
-// 🚀 Rota principal do formulário
 app.post("/briefing", async (req, res) => {
   const { curso, tipo_peca, nome_evento, publico, tom_voz, data_evento, link_local, observacoes } =
     req.body;
 
   try {
-    // 🧠 Geração de texto via Groq
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -24,38 +22,41 @@ app.post("/briefing", async (req, res) => {
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192", // modelo rápido e gratuito
+        model: "llama3-8b-8192",
         messages: [
           {
             role: "system",
             content:
-              "Você é um assistente de marketing da UniFAJ e UniMAX. Gere textos curtos e criativos para campanhas.",
+              "Você é um assistente de marketing da UniFAJ e UniMAX. Gere textos curtos e criativos para campanhas institucionais.",
           },
           {
             role: "user",
-            content: `Crie um texto de ${tipo_peca} para o curso ${curso}, 
-              com o evento '${nome_evento}', voltado para ${publico}, 
-              com tom ${tom_voz}. Data: ${data_evento}. Local: ${link_local}. 
-              Observações: ${observacoes}.`,
+            content: `Crie um texto de ${tipo_peca} para o curso ${curso}, com o evento '${nome_evento}', voltado para ${publico}, com tom ${tom_voz}. Data: ${data_evento}. Local: ${link_local}. Observações: ${observacoes}.`,
           },
         ],
-        temperature: 0.8,
       }),
     });
 
+    // 👇 Log para verificar a resposta no Render
     const data = await response.json();
-    const textoGerado = data?.choices?.[0]?.message?.content || "Não foi possível gerar o texto.";
+    console.log("Resposta Groq:", data);
 
-    // 🔗 simulação de integração futura com Canva
-    const linkCanva = "https://www.canva.com/";
+    if (!response.ok) {
+      return res.status(500).json({
+        error: "Erro do Groq",
+        details: data,
+      });
+    }
+
+    const textoGerado = data?.choices?.[0]?.message?.content || "Sem resposta do modelo.";
 
     res.json({
       texto_gerado: textoGerado,
-      link_canva: linkCanva,
+      link_canva: "https://www.canva.com/",
     });
   } catch (error) {
-    console.error("Erro ao gerar briefing:", error);
-    res.status(500).json({ error: "Erro interno ao gerar briefing" });
+    console.error("Erro geral:", error);
+    res.status(500).json({ error: "Erro interno no servidor", details: error.message });
   }
 });
 
