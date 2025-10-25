@@ -6,8 +6,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rota base para checar o status do servidor
 app.get("/", (req, res) => {
-  res.send("Servidor de Briefing UniEduK ativo com Groq 🚀");
+  res.send("🚀 Servidor de Briefing UniEduK ativo com Groq + Make + Canva!");
 });
 
 app.post("/briefing", async (req, res) => {
@@ -22,10 +23,10 @@ app.post("/briefing", async (req, res) => {
     observacoes,
   } = req.body;
 
+  // Modelos Groq disponíveis (com fallback automático)
   const modelsToTry = [
-    "llama-3.3-70b-versatile",
-    "llama-3.2-11b-text-preview",
-    "gemma2-9b-it"
+    "llama-3.3-70b-versatile", // modelo mais novo e robusto
+    "gemma2-9b-it" // alternativa leve
   ];
 
   let lastError = null;
@@ -43,16 +44,23 @@ app.post("/briefing", async (req, res) => {
         body: JSON.stringify({
           model: modelId,
           temperature: 0.8,
-          max_tokens: 500,
+          max_tokens: 600,
           messages: [
             {
               role: "system",
-              content:
-                "Você é um assistente de marketing do Grupo UniEduK (UniFAJ e UniMAX). Gere textos curtos e criativos para campanhas institucionais de ensino superior.",
+              content: "Você é um assistente de marketing do Grupo UniEduK (UniFAJ e UniMAX). Gere textos criativos, curtos e institucionais para campanhas e posts acadêmicos.",
             },
             {
               role: "user",
-              content: `Crie um texto de ${tipo_peca} para o curso ${curso}, referente ao evento '${nome_evento}', voltado para ${publico}, com tom de voz ${tom_voz}. Data: ${data_evento}. Local: ${link_local}. Observações: ${observacoes}.`,
+              content: `
+              Crie um texto para uma peça de marketing (${tipo_peca})
+              do curso ${curso}, referente ao evento '${nome_evento}',
+              voltado para ${publico}, com tom de voz ${tom_voz}.
+              Data do evento: ${data_evento}.
+              Local: ${link_local}.
+              Observações adicionais: ${observacoes}.
+              Finalize com hashtags e inclua uma chamada de engajamento.
+              `,
             },
           ],
         }),
@@ -63,29 +71,54 @@ app.post("/briefing", async (req, res) => {
 
       if (!response.ok || data.error) {
         lastError = { model: modelId, details: data.error || data };
-        continue;  // tenta o próximo modelo
+        continue; // tenta o próximo modelo
       }
 
       const textoGerado = data.choices?.[0]?.message?.content || "Sem resposta gerada.";
 
+      // ✅ Envio automático para o Make (integração)
+      try {
+        const makeResponse = await fetch("https://hook.us2.make.com/6tl04pgldoxs7jpq5k16sm1dsh2zhdhu", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            curso,
+            tipo_peca,
+            nome_evento,
+            publico,
+            tom_voz,
+            data_evento,
+            link_local,
+            observacoes,
+            texto_gerado: textoGerado,
+            link_canva: "https://www.canva.com/",
+          }),
+        });
+
+        console.log("✅ Dados enviados ao Make:", makeResponse.status);
+      } catch (err) {
+        console.error("⚠️ Erro ao enviar dados ao Make:", err);
+      }
+
+      // Retorno para o front-end
       return res.json({
         texto_gerado: textoGerado.trim(),
         link_canva: "https://www.canva.com/",
       });
-
     } catch (error) {
       lastError = { model: modelId, details: error.message };
-      console.error(`Erro com modelo ${modelId}:`, error);
+      console.error(`❌ Erro com modelo ${modelId}:`, error);
       continue;
     }
   }
 
-  // se chegou aqui, todos os modelos falharam
+  // Se todos os modelos falharem
   res.status(500).json({
     error: "Todos os modelos Groq falharam",
     last_error: lastError,
   });
 });
 
+// Porta Render
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT} ✅`));
+app.listen(PORT, () => console.log(`✅ Servidor rodando na porta ${PORT}`));
