@@ -11,8 +11,7 @@ app.get("/", (req, res) => {
 });
 
 app.post("/briefing", async (req, res) => {
-  const { curso, tipo_peca, nome_evento, publico, tom_voz, data_evento, link_local, observacoes } =
-    req.body;
+  const { curso, tipo_peca, nome_evento, publico, tom_voz, data_evento, link_local, observacoes } = req.body;
 
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -22,7 +21,7 @@ app.post("/briefing", async (req, res) => {
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.1-70b-versatile",
         messages: [
           {
             role: "system",
@@ -37,7 +36,6 @@ app.post("/briefing", async (req, res) => {
       }),
     });
 
-    // 👇 Log para verificar a resposta no Render
     const data = await response.json();
     console.log("Resposta Groq:", data);
 
@@ -60,5 +58,5 @@ app.post("/briefing", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
